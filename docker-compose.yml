@@ -1,0 +1,72 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  airflow-webserver:
+    image: apache/airflow:2.6.0
+    restart: always
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/dags  # Ensuring the DAGS folder is properly recognized
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false  # Disabling example DAGs
+      - PYTHONPATH=/usr/local/airflow/dags
+    volumes:
+      - ./dags:/usr/local/airflow/dags  # Relative path
+      - ./logs:/usr/local/airflow/logs  # Relative path
+      - ./plugins:/usr/local/airflow/plugins  # Relative path
+      - ./source_dir:/usr/local/airflow/source_dir  # New source directory
+      - ./dest_dir:/usr/local/airflow/dest_dir  # New destination directory
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    command: webserver
+
+  airflow-scheduler:
+    image: apache/airflow:2.6.0
+    restart: always
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/dags  # Ensuring the DAGS folder is properly recognized
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false  # Disabling example DAGs
+      - PYTHONPATH=/usr/local/airflow/dags
+    volumes:
+      - ./dags:/usr/local/airflow/dags  # Relative path
+      - ./logs:/usr/local/airflow/logs  # Relative path
+      - ./plugins:/usr/local/airflow/plugins  # Relative path
+      - ./source_dir:/usr/local/airflow/source_dir  # New source directory
+      - ./dest_dir:/usr/local/airflow/dest_dir  # New destination directory
+    depends_on:
+      - postgres
+    command: scheduler
+
+  airflow-init:
+    image: apache/airflow:2.6.0
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/dags  # Ensuring the DAGS folder is properly recognized
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false  # Disabling example DAGs
+    volumes:
+      - ./dags:/usr/local/airflow/dags  # Relative path
+      - ./logs:/usr/local/airflow/logs  # Relative path
+      - ./plugins:/usr/local/airflow/plugins  # Relative path
+      - ./source_dir:/usr/local/airflow/source_dir  # New source directory
+      - ./dest_dir:/usr/local/airflow/dest_dir  # New destination directory
+    entrypoint: >
+      /bin/bash -c "
+      airflow db init &&
+      airflow users create --username airflow --firstname Air --lastname Flow --role Admin --email airflow@example.com --password airflow;
+      "
+
+volumes:
+  postgres_data:
